@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Слот-машина!</title>
+    <link rel="icon" href="icon.png" type="image/png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: white;
+        }
+        
+        .slot-machine {
+            background: linear-gradient(145deg, #2a2a3a, #1e1e2e);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: 400px;
+            text-align: center;
+            border: 2px solid #444;
+        }
+        
+        h1 {
+            color: #f8d347;
+            margin-top: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .slots-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            background-color: #0f0f1a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #333;
+        }
+        
+        .slot {
+            width: 80px;
+            height: 120px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .slot-reel {
+            position: absolute;
+            width: 100%;
+            transition: top 0.1s;
+        }
+        
+        .slot-item {
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+        }
+        
+        .spin-btn {
+            background: linear-gradient(to bottom, #f8d347, #e6b801);
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            color: #1a1a2e;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .result-message {
+            min-height: 60px;
+            font-size: 18px;
+            padding: 15px;
+            background-color: #0f0f1a;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #333;
+        }
+        
+        .win {
+            color: #4caf50;
+            font-weight: bold;
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        .lose {
+            color: #f44336;
+        }
+        
+        .jackpot {
+            color: #ffeb3b;
+            font-weight: bold;
+            animation: pulse 0.3s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="slot-machine">
+        <h1>СЛОТ-МАШИНА</h1>
+        <div class="slots-container">
+            <div class="slot" id="slot1">
+                <div class="slot-reel" id="reel1"></div>
+            </div>
+            <div class="slot" id="slot2">
+                <div class="slot-reel" id="reel2"></div>
+            </div>
+            <div class="slot" id="slot3">
+                <div class="slot-reel" id="reel3"></div>
+            </div>
+        </div>
+        <button class="spin-btn" id="spinBtn">КРУТИТЬ</button>
+        <div class="result-message" id="resultMessage">Нажмите "Крутить" чтобы начать игру</div>
+    </div>
+
+    <script>
+        // Символы для слотов
+        const symbols = ['🍒', '🍋', '🍊', '🍇', '🍉', '7️⃣', '💰', '🔔'];
+        
+        // Элементы DOM
+        const reels = [
+            document.getElementById('reel1'),
+            document.getElementById('reel2'),
+            document.getElementById('reel3')
+        ];
+        const spinBtn = document.getElementById('spinBtn');
+        const resultMessage = document.getElementById('resultMessage');
+        
+        // Выигрышные комбинации (только 5% шанс)
+        const winningCombinations = [
+            ['7️⃣', '7️⃣', '7️⃣'], // Джекпот (1%)
+            ['💰', '💰', '💰'],   // Большой выигрыш (1%)
+            ['🍒', '🍒', '🍒'],   // Малый выигрыш (1%)
+            ['🔔', '🔔', '🔔'],   // Малый выигрыш (1%)
+            ['🍇', '🍇', '🍇']    // Малый выигрыш (1%)
+        ];
+        
+        // Состояние игры
+        let isSpinning = false;
+        
+        // Заполняем слоты символами
+        function initializeSlots() {
+            reels.forEach(reel => {
+                reel.innerHTML = '';
+                // Создаем 20 символов в каждом барабане
+                for (let i = 0; i < 20; i++) {
+                    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    const slotItem = document.createElement('div');
+                    slotItem.className = 'slot-item';
+                    slotItem.textContent = randomSymbol;
+                    reel.appendChild(slotItem);
+                }
+            });
+        }
+        
+        // Функция вращения
+        function spin() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            spinBtn.disabled = true;
+            resultMessage.textContent = 'Крутим...';
+            resultMessage.className = 'result-message';
+            
+            // Решаем, будет ли это выигрыш (5% шанс)
+            const isWin = Math.random() < 0.05;
+            let result;
+            
+            if (isWin) {
+                // Выбираем случайную выигрышную комбинацию
+                result = winningCombinations[Math.floor(Math.random() * winningCombinations.length)];
+            } else {
+                // Генерируем проигрышную комбинацию
+                result = [
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)]
+                ];
+                // Гарантируем, что это не выигрышная комбинация
+                while (isWinningCombination(result)) {
+                    result = [
+                        symbols[Math.floor(Math.random() * symbols.length)],
+                        symbols[Math.floor(Math.random() * symbols.length)],
+                        symbols[Math.floor(Math.random() * symbols.length)]
+                    ];
+                }
+            }
+            
+            // Анимация вращения для каждого барабана
+            reels.forEach((reel, index) => {
+                const items = reel.querySelectorAll('.slot-item');
+                let currentPosition = 0;
+                const spinInterval = setInterval(() => {
+                    currentPosition += 1;
+                    if (currentPosition >= items.length) currentPosition = 0;
+                    reel.style.top = `-${currentPosition * 120}px`;
+                }, 50);
+                
+                // Остановка барабана через разное время для эффекта
+                setTimeout(() => {
+                    clearInterval(spinInterval);
+                    // Устанавливаем нужный символ
+                    reel.style.top = `-${19 * 120}px`; // Позиция последнего элемента
+                    setTimeout(() => {
+                        items[19].textContent = result[index];
+                    }, 50);
+                    
+                    // Когда все барабаны остановились
+                    if (index === reels.length - 1) {
+                        setTimeout(checkResult, 500, result);
+                    }
+                }, 1000 + index * 500);
+            });
+        }
+        
+        // Проверка, является ли комбинация выигрышной
+        function isWinningCombination(combination) {
+            return winningCombinations.some(winCombo => 
+                winCombo[0] === combination[0] && 
+                winCombo[1] === combination[1] && 
+                winCombo[2] === combination[2]
+            );
+        }
+        
+        // Проверка результата
+        function checkResult(result) {
+            isSpinning = false;
+            spinBtn.disabled = false;
+            
+            if (isWinningCombination(result)) {
+                if (result[0] === '7️⃣') {
+                    resultMessage.textContent = 'ДЖЕКПОТ! ВЫ ВЫИГРАЛИ 1000$!';
+                    resultMessage.className = 'result-message jackpot';
+                } else {
+                    resultMessage.textContent = 'ПОЗДРАВЛЯЕМ! ВЫ ВЫИГРАЛИ 100$!';
+                    resultMessage.className = 'result-message win';
+                }
+            } else {
+                resultMessage.textContent = 'Повезёт в следующий раз!';
+                resultMessage.className = 'result-message lose';
+            }
+        }
+        
+        // Инициализация
+        initializeSlots();
+        spinBtn.addEventListener('click', spin);
+    </script>
+</body>
+</html>
